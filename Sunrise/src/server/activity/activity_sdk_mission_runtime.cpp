@@ -143,6 +143,51 @@ SceneStatus activate_authored_scene(const sdk::BoundView& view,
     return SceneStatus::refused;
 }
 
+/** Queues one event or stop for the retained generation, with no script reservation. */
+[[nodiscard]] static SceneStatus update_authored_scene(const sdk::BoundView& view,
+                                                       std::uint32_t occurrenceRow,
+                                                       std::uint32_t slotRow,
+                                                       std::uint32_t eventKey,
+                                                       bool stop) noexcept {
+    PreparedScene prepared{};
+    const SceneStatus status = prepare_scene(view, occurrenceRow, slotRow, prepared);
+    if (status != SceneStatus::ready) {
+        return status;
+    }
+    if (server::bap::request_activity_state_local_authored_scene_override(
+            view.binding,
+            prepared.target,
+            prepared.rosterGroup,
+            prepared.effectiveRegion,
+            prepared.activityClientGeneration,
+            nullptr,
+            prepared.sceneDependencies,
+            eventKey,
+            stop)) {
+        return SceneStatus::queued;
+    }
+    return SceneStatus::refused;
+}
+
+/** Adds one event key to the running generation of one authored scene, outside any script. */
+SceneStatus signal_authored_scene(const sdk::BoundView& view,
+                                  std::uint32_t occurrenceRow,
+                                  std::uint32_t slotRow,
+                                  std::uint32_t eventKey) noexcept {
+    // Zero would read as a fresh activation and start another generation.
+    if (eventKey == 0) {
+        return SceneStatus::refused;
+    }
+    return update_authored_scene(view, occurrenceRow, slotRow, eventKey, false);
+}
+
+/** Stops the running generation of one authored scene without starting another. */
+SceneStatus stop_authored_scene(const sdk::BoundView& view,
+                                std::uint32_t occurrenceRow,
+                                std::uint32_t slotRow) noexcept {
+    return update_authored_scene(view, occurrenceRow, slotRow, 0, true);
+}
+
 /** Checks one exact SDK-bounded authored dialogue cue. */
 SceneStatus dialogue_cue_availability(const sdk::BoundView& view,
                                       std::uint32_t occurrenceRow,

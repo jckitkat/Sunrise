@@ -13,6 +13,7 @@
 #include "host_runtime_counter_auth.h"
 #include "host_runtime_ghost_link.h"
 #include "host_runtime_internal.h"
+#include "host_runtime_scene_trace.h"
 
 namespace sunrise::server::activity::host {
 namespace {
@@ -296,6 +297,7 @@ void cancel_pending(Instance& instance,
     event.binding = binding;
     event.tick = now;
     event.kind = EventKind::scriptableOverrideCanceled;
+    scene_trace::write("cancel", "pending_cleared", instance.pendingScriptable, false, 0);
     for (std::size_t index = 0; index < instance.pendingScriptableTailCount; ++index) {
         event.scriptableRevision = instance.pendingScriptableTail[index].revision;
         append_event(event);
@@ -330,6 +332,20 @@ void apply_scriptable_control(const ScriptableRequest& request, std::uint64_t no
         || instance->view.scriptableRevision == (std::numeric_limits<std::uint64_t>::max)()
         || (request.expectedRevision != 0 && !joinsTail
             && instance->view.scriptableRevision + 1 != request.expectedRevision)) {
+        if (scene_trace::traced(request.kind)) {
+            PendingScriptableOverride refused{};
+            refused.target = request.target;
+            refused.kind = request.kind;
+            refused.revision = request.expectedRevision;
+            scene_trace::write("encode",
+                               instance == nullptr || !instance->view.active ? "no_instance"
+                               : instance->view.outputPending && !joinsTail  ? "output_pending"
+                               : !durableAssignment                          ? "not_assigned"
+                                                                             : "revision_mismatch",
+                               refused,
+                               request.expectedIntentSequence != 0,
+                               request.sceneEventKey);
+        }
         ++g_refusedControls;
         append_event(event);
         if (instance != nullptr) {
@@ -642,6 +658,17 @@ void apply_scriptable_control(const ScriptableRequest& request, std::uint64_t no
         if (encoded) {
             pending.bitCount = static_cast<std::uint16_t>(composedBits);
         }
+    }
+    if (scene_trace::traced(request.kind)) {
+        // The byte count is only stored on success below; the trace needs it either way.
+        PendingScriptableOverride traced = pending;
+        traced.byteCount =
+            static_cast<std::uint16_t>((std::min)(written, static_cast<std::size_t>(0xFFFFU)));
+        scene_trace::write("encode",
+                           !encoded ? "refused" : joinsTail ? "queued_tail" : "queued",
+                           traced,
+                           request.expectedIntentSequence != 0,
+                           request.sceneEventKey);
     }
     if (!encoded || written > (std::numeric_limits<std::uint16_t>::max)()) {
         ++g_refusedControls;

@@ -93,6 +93,22 @@ select_state(const state::activity_sdk::BoundView& view,
                                                   std::uint32_t occurrenceRow,
                                                   std::uint32_t slotRow) noexcept;
 
+/**
+ * Adds one event key to the running generation of one authored scene, outside any script.
+ * @param eventKey One of the scene's gate keys; zero and all-one bits are refused.
+ * @return Queued when the Host accepted the request. A scene with no retained generation is
+ *         dropped later, when the Host encodes the update.
+ */
+[[nodiscard]] SceneStatus signal_authored_scene(const state::activity_sdk::BoundView& view,
+                                                std::uint32_t occurrenceRow,
+                                                std::uint32_t slotRow,
+                                                std::uint32_t eventKey) noexcept;
+
+/** Stops the running generation of one authored scene without starting another. */
+[[nodiscard]] SceneStatus stop_authored_scene(const state::activity_sdk::BoundView& view,
+                                              std::uint32_t occurrenceRow,
+                                              std::uint32_t slotRow) noexcept;
+
 /** Checks one exact SDK-bounded type-53 authored dialogue cue. */
 [[nodiscard]] SceneStatus dialogue_cue_availability(const state::activity_sdk::BoundView& view,
                                                     std::uint32_t occurrenceRow,

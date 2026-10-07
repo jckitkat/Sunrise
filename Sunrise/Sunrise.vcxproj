@@ -876,6 +876,7 @@
     <ClCompile Include="src\server\ui\activity_host\activity_host_panel.cpp" />
     <ClCompile Include="src\server\ui\activity_host\activity_host_sdk_view.cpp" />
     <ClCompile Include="src\server\ui\activity_host\activity_host_sdk_mission_view.cpp" />
+    <ClCompile Include="src\server\ui\activity_host\activity_host_sdk_scene_details.cpp" />
     <ClCompile Include="src\server\ui\activity_host\activity_host_sdk_state_pages.cpp" />
     <ClCompile Include="src\server\ui\activity_host\activity_host_sdk_actor_sequences.cpp" />
     <ClCompile Include="src\server\ui\activity_host\activity_host_sdk_squad_view.cpp" />
@@ -1598,6 +1599,8 @@
     <ClInclude Include="src\server\ui\activity_host\activity_host_panel.h" />
     <ClInclude Include="src\server\ui\activity_host\activity_host_sdk_view.h" />
     <ClInclude Include="src\server\ui\activity_host\activity_host_sdk_mission_view.h" />
+    <ClInclude Include="src\server\ui\activity_host\activity_host_sdk_scene_details.h" />
+    <ClInclude Include="src\server\activity\host_runtime_scene_trace.h" />
     <ClInclude Include="src\server\ui\activity_host\activity_host_sdk_state_pages.h" />
     <ClInclude Include="src\server\ui\activity_host\activity_host_sdk_squad_view.h" />
     <ClInclude Include="src\server\ui\activity_host\activity_host_authored_anchors.h" />

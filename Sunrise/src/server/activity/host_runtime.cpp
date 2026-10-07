@@ -15,6 +15,7 @@
 #include "../../state/activity/mission/runtime.h"
 #include "../../state/activity/runtime.h"
 #include "host_runtime_internal.h"
+#include "host_runtime_scene_trace.h"
 
 namespace sunrise::server::activity::host {
 namespace detail {
@@ -206,6 +207,7 @@ void cancel_output(Instance& instance, std::uint64_t now) noexcept {
     } else if (instance.view.outputKind == OutputKind::scriptableOverride) {
         event.kind = EventKind::scriptableOverrideCanceled;
         event.scriptableRevision = instance.view.scriptableRevision;
+        scene_trace::write("cancel", "output_canceled", instance.pendingScriptable, false, 0);
         instance.pendingScriptable = {};
     } else {
         event.stateRevision = instance.view.stateRevision;

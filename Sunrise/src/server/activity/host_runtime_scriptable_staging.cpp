@@ -6,6 +6,7 @@
 #include "../gameplay/squad_entity_retirement.h"
 #include "host_runtime_ghost_link.h"
 #include "host_runtime_internal.h"
+#include "host_runtime_scene_trace.h"
 
 namespace sunrise::server::activity::host {
 namespace {
@@ -311,11 +312,25 @@ void note_scriptable_transport_staged(const state::activity::SessionBinding& bin
     Instance* const instance = find_instance(binding);
     ScriptableGuard* guard = instance != nullptr ? find_guard(*instance, pending.target) : nullptr;
     const bool nextCounter = staged_counter_matches(guard, pending);
+    if (scene_trace::traced(pending.kind)) {
+        const bool current = instance != nullptr && instance->view.outputPending
+                             && instance->view.outputKind == OutputKind::scriptableOverride
+                             && same_pending(instance->pendingScriptable, pending);
+        scene_trace::write("transport",
+                           instance == nullptr ? "no_instance"
+                           : !nextCounter      ? "counter_mismatch"
+                           : !current          ? "not_current"
+                                               : "sent",
+                           pending,
+                           false,
+                           0);
+    }
     if (instance != nullptr && nextCounter && instance->view.outputPending
         && instance->view.outputKind == OutputKind::scriptableOverride
         && same_pending(instance->pendingScriptable, pending)) {
         const bool retained = retain_scriptable_auth(*instance, pending, sourceGeneration);
         if (!retained) {
+            scene_trace::write("transport", "not_retained", pending, false, 0);
             ++g_refusedControls;
             ReleaseSRWLockExclusive(&g_lock);
             return;

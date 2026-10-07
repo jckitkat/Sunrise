@@ -17,6 +17,7 @@
 #include "../../activity/activity_sdk_mission_runtime.h"
 #include "activity_host_sdk_behavior_view.h"
 #include "activity_host_sdk_mission_text.h"
+#include "activity_host_sdk_scene_details.h"
 #include "activity_host_table_layout.h"
 
 namespace sunrise::server::ui::activity_host::sdk_mission_view {
@@ -32,6 +33,9 @@ std::uint32_t g_sceneActionOccurrence{sdk::format::kAbsentIndex};
 std::uint32_t g_sceneActionSlot{sdk::format::kAbsentIndex};
 mission::SceneStatus g_sceneActionStatus{mission::SceneStatus::ready};
 bool g_hasSceneActionStatus{};
+/** The scene whose details are drawn under the table; absent until a row is clicked. */
+std::uint32_t g_selectedSceneOccurrence{sdk::format::kAbsentIndex};
+std::uint32_t g_selectedSceneSlot{sdk::format::kAbsentIndex};
 std::uint32_t g_dialogueActionOccurrence{sdk::format::kAbsentIndex};
 std::uint32_t g_dialogueActionSlot{sdk::format::kAbsentIndex};
 std::uint16_t g_dialogueActionCue{};
@@ -309,11 +313,21 @@ void draw_authored_scenes(const sdk::BoundView& view, const mission::Snapshot& s
             ImGui::PushID(static_cast<int>(row.slotRow));
             table_layout::next_row();
             ImGui::TableNextColumn();
-            ImGui::Text("%.*s\n%.*s",
-                        print_length(slotName),
-                        slotName.data(),
-                        print_length(display_text(catalog, object.id)),
-                        display_text(catalog, object.id).data());
+            // Clicking the name selects the scene for the detail panel under the table.
+            const bool selected = g_selectedSceneOccurrence == row.occurrenceRow
+                                  && g_selectedSceneSlot == row.slotRow;
+            std::array<char, 384> sceneLabel{};
+            std::snprintf(sceneLabel.data(),
+                          sceneLabel.size(),
+                          "%.*s\n%.*s###scene",
+                          print_length(slotName),
+                          slotName.data(),
+                          print_length(display_text(catalog, object.id)),
+                          display_text(catalog, object.id).data());
+            if (ImGui::Selectable(sceneLabel.data(), selected)) {
+                g_selectedSceneOccurrence = selected ? sdk::format::kAbsentIndex : row.occurrenceRow;
+                g_selectedSceneSlot = selected ? sdk::format::kAbsentIndex : row.slotRow;
+            }
             ImGui::TableNextColumn();
             ImGui::Text("row %u\n%.*s",
                         static_cast<unsigned>(row.occurrenceRow),
@@ -390,6 +404,18 @@ void draw_authored_scenes(const sdk::BoundView& view, const mission::Snapshot& s
         }
     }
     ImGui::EndTable();
+
+    // The selection survives a search that hides its row only until that row is listed again.
+    const auto chosen =
+        std::find_if(g_visibleScenes.begin(), g_visibleScenes.end(), [](const SceneBrowserRow& row) {
+            return row.occurrenceRow == g_selectedSceneOccurrence
+                   && row.slotRow == g_selectedSceneSlot;
+        });
+    if (chosen == g_visibleScenes.end()) {
+        ImGui::TextDisabled("Click a scene's name to see its events, cast and squads.");
+        return;
+    }
+    draw_scene_details(view, chosen->occurrenceRow, chosen->slotRow, chosen->availability);
 }
 
 /** Draws type-53 cues and the localized variants selected by each authored cue definition. */
@@ -641,6 +667,7 @@ void sync_action_generation(const sdk::BoundView& view,
     g_actionGeneration = snapshot.activityClientGeneration;
     g_actionScenario = view.scenarioRow;
     g_hasSceneActionStatus = false;
+    reset_scene_detail_status();
     g_hasDialogueActionStatus = false;
     reset_behavior_action_status();
     g_hasDirectiveActionStatus = false;
